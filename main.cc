@@ -50,7 +50,7 @@ void ChatDialog::gotReturnPressed()
 
 	message_map["ChatText"] = textline->text();
 	stream << message_map;
-	qDebug() << stream;
+	qDebug() << "message in stream: " << message_map;
 
 
 
