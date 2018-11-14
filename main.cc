@@ -114,15 +114,16 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
 
-	int peer;
+	QList<int> peerList = sock->PeerList();
 
-	for (int p = sock->myPortMin; p <= sock->myPortMax; p++) {
-		if (sock->localPort() != p) {
-			sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, p);
-			return;
-		}
+	qDebug() << "Peer List: " << peerList;
 
-	}
+	index = rand() % peerList.size();
+
+	qDebug() << "Sending to peer:" << peerList[index];
+	
+	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
+
 }
 
 NetSocket::NetSocket()
@@ -136,6 +137,17 @@ NetSocket::NetSocket()
 	// We use the range from 32768 to 49151 for this purpose.
 	myPortMin = 32768 + (getuid() % 4096)*4;
 	myPortMax = myPortMin + 3;
+}
+
+QList<int> NetSocket::PeerList()
+{
+    QList<int> peerList;
+	for (int p = myPortMin; p <= myPortMax; p++) {
+	    if (this->localPost() != p) {
+            peerList.append(p);
+	    }
+	}
+    return peerList;
 }
 
 bool NetSocket::bind()

@@ -12,6 +12,7 @@ class NetSocket : public QUdpSocket
 
 	public:
 		NetSocket();
+		QList<int> PeerList();
 
 		// Bind this socket to a P2Papp-specific default port.
 		bool bind();
