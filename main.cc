@@ -57,8 +57,9 @@ void ChatDialog::readPendingMessages()
 		sock->readDatagram(datagram.data(), datagram.size(),
 								&sender, &senderPort);
 
-
-		qDebug() << "message in datagram: " << datagram;
+		qDebug() << "message in sender: " << sender;
+		qDebug() << "message in senderPort: " << senderPort;
+		qDebug() << "message in datagram: " << datagram.data();
 
 	}
 }
