@@ -74,11 +74,11 @@ void ChatDialog::gotReturnPressed()
 	// Insert some networking code here...
 	qDebug() << "FIX: send message to other peers: " << textline->text();
 
+	// Define message QMap
 	message_map["ChatText"] = textline->text();
 	stream << message_map;
 
 	qDebug() << "message in stream: " << message_map["ChatText"];
-
 
 	textview->append(textline->text());
 
