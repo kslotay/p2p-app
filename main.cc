@@ -61,8 +61,19 @@ void ChatDialog::readPendingMessages()
 		qDebug() << "message in senderPort: " << senderPort;
 		qDebug() << "message in datagram: " << datagram.data();
 
+		QString message = datagram.data()
+		textview->append(message);
+
 	}
 }
+//
+//void ChatDialog::processMessage(char* datagram)
+//{
+//	QDataStream stream(&datagram,  QIODevice::ReadOnly);
+//	QMap<QString, QVariant> message_map;
+//
+//
+//}
 
 void ChatDialog::gotReturnPressed()
 {
