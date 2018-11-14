@@ -32,12 +32,6 @@ ChatDialog::ChatDialog()
 	layout->addWidget(textline);
 	setLayout(layout);
 
-	// Create a UDP network socket
-	NetSocket sock;
-	if (!sock.bind())
-		exit(1);
-
-
 	// Register a callback on the textline's returnPressed signal
 	// so that we can send the message entered by the user.
 	connect(textline, SIGNAL(returnPressed()),
@@ -72,6 +66,11 @@ void ChatDialog::sendMessage(QByteArray buffer)
 {
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
+	qint64 bytesSent = sock.writeDatagram(buffer),
+											QHostAddress::LocalHost,
+											36768);
+	qDebug() << "message in bytessent: " << bytesSent;
+
 }
 
 NetSocket::NetSocket()
@@ -110,6 +109,12 @@ int main(int argc, char **argv)
 	// Create an initial chat dialog window
 	ChatDialog dialog;
 	dialog.show();
+
+	// Create a UDP network socket
+	NetSocket sock;
+	if (!sock.bind())
+		exit(1);
+
 
 	// Enter the Qt main loop; everything else is event driven
 	return app.exec();
