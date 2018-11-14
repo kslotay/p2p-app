@@ -55,7 +55,7 @@ void ChatDialog::readPendingMessages()
 		QHostAddress sender;
 		quint16 senderPort;
 
-		sock->readDatagram(datagram.data(), datagram.size(),
+		sock->readDatagram(datagram, datagram.size(),
 								&sender, &senderPort);
 
 		qDebug() << "message in sender: " << sender;
