@@ -71,7 +71,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 {
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
-	qint64 bytesSent = sock->writeDatagram(buffer), QHostAddress::LocalHost, 36768);
+	qint64 bytesSent = sock.writeDatagram(buffer), QHostAddress::LocalHost, 36768);
 
 	qDebug() << "message in bytessent: " << bytesSent;
 
