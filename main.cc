@@ -44,6 +44,7 @@ ChatDialog::ChatDialog()
 
 	// callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
+
 }
 
 void ChatDialog::readPendingMessages()
@@ -57,8 +58,9 @@ void ChatDialog::readPendingMessages()
 		sock->readDatagram(datagram.data(), datagram.size(),
 								&sender, &senderPort);
 
+		qDebug() << "message in datagram: " << QString(datagram);
 
-		qDebug() << "message in datagram: " << datagram;
+//		textview->append(datagram.data());
 
 	}
 }
@@ -92,7 +94,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
 
-	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36768);
+	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36769);
 
 }
 
