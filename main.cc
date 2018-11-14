@@ -34,7 +34,7 @@ ChatDialog::ChatDialog()
 
 	// Create a UDP network socket
 	sock = new NetSocket();
-	if (!sock.bind())
+	if (!sock->bind())
 		exit(1);
 
 	// Register a callback on the textline's returnPressed signal
@@ -71,7 +71,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 {
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
-	qint64 bytesSent = sock.writeDatagram(buffer), QHostAddress::LocalHost, 36768);
+	qint64 bytesSent = sock->writeDatagram(buffer), QHostAddress::LocalHost, 36768);
 
 	qDebug() << "message in bytessent: " << bytesSent;
 
