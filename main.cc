@@ -53,7 +53,7 @@ void ChatDialog::gotReturnPressed()
 
 	qDebug() << "message in stream: " << message_map["ChatText"];
 
-	qint64 bytesSent = socket.writeDatagram(stream, QHostAddress(QHostAddress::LocalHost));
+	qint64 bytesSent = sock.writeDatagram(stream, QHostAddress(QHostAddress::LocalHost));
 
 
 
