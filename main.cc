@@ -118,7 +118,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 
 	qDebug() << "Peer List: " << peerList;
 
-	index = rand() % peerList.size();
+	int index = rand() % peerList.size();
 
 	qDebug() << "Sending to peer:" << peerList[index];
 
