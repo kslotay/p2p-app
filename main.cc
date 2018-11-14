@@ -68,15 +68,13 @@ void ChatDialog::readPendingMessages()
 		qDebug() << "message in senderPort: " << senderPort;
 		qDebug() << "message in datagram: " << datagram.data();
 
-		processMessage(datagram);
-
+		processMessage(datagram, sender, senderPort);
 	}
 }
 //
-void ChatDialog::processMessage(QByteArray datagramReceived)
+void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort)
 {
 	QMap<QString, QVariant> messageMap;
-
 	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
 
 	stream >> messageMap;
@@ -86,9 +84,15 @@ void ChatDialog::processMessage(QByteArray datagramReceived)
 		qDebug() << "message contains origin" << messageMap.value("Origin").toString();
 		qDebug() << "message contains seqnum" << messageMap.value("SeqNo").toString();
 
-		textview->append(messageMap.value("ChatText").toString());
-	}
+		//If origin already in statusList, seqno+1, if not in list add origin, seqno+1
 
+		textview->append(messageMap.value("ChatText").toString());
+
+		sendStatusMessage(sender, senderPort);
+	}
+	else if (messageMap.contains("Want")) {
+		qDebug() << "message contains want" << messageMap.value("Want").toString();
+	}
 
 }
 
@@ -133,6 +137,25 @@ void ChatDialog::sendMessage(QByteArray buffer)
 
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
 
+}
+
+void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
+{
+	QByteArray buffer;
+	QDataStream stream(&buffer,  QIODevice::ReadWrite);
+	QMap<QString, QMap<QString, quint32>> statusMessage;
+
+	qDebug() << "message in buff: " << buffer;
+	qDebug() << "message in sock: " << sock;
+	qDebug() << "sending to peer: " << port;
+
+	// Define message QMap
+	statusMessage["Want"] = statusList;
+	qDebug() << "statusList: " << statusMessage["Want"];
+
+	stream << statusMessage;
+
+	sock->writeDatagram(buffer, buffer.size(), sendto, port);
 }
 
 NetSocket::NetSocket()

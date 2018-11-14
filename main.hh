@@ -31,8 +31,10 @@ public:
 	NetSocket *sock;
 	int nextSeqNum;
 	QString origin;
+	QMap<QString, quint32> statusList;
 	void sendMessage(QByteArray);
-	void processMessage(QByteArray);
+	void sendStatusMessage(QHostAddress sendto, int port);
+	void processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort);
 
 
 public slots:
