@@ -55,42 +55,48 @@ void ChatDialog::readPendingMessages()
 		QHostAddress sender;
 		quint16 senderPort;
 
-		sock->readDatagram(datagram, datagram.size(),
+		sock->readDatagram(datagram.data(), datagram.size(),
 								&sender, &senderPort);
 
 		qDebug() << "message in sender: " << sender;
 		qDebug() << "message in senderPort: " << senderPort;
 		qDebug() << "message in datagram: " << datagram.data();
 
-		QString message = datagram.data();
-		textview->append(message);
+		processMessage(datagram)
 
 	}
 }
 //
-//void ChatDialog::processMessage(char* datagram)
-//{
-//	QDataStream stream(&datagram,  QIODevice::ReadOnly);
-//	QMap<QString, QVariant> message_map;
-//
-//
-//}
+void ChatDialog::processMessage(QByteArray datagramReceived)
+{
+	QMap<QString, QVariant> messageMap;
+
+	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
+
+	messageMap << stream;
+
+	if (messageMap.contains("ChatText")) {
+		qDebug() << "message contains chattext"
+	}
+
+
+}
 
 void ChatDialog::gotReturnPressed()
 {
 	QByteArray buffer;
 	QDataStream stream(&buffer,  QIODevice::ReadWrite);
-	QMap<QString, QVariant> message_map;
+	QMap<QString, QVariant> messageMap;
 
 	// Initially, just echo the string locally.
 	// Insert some networking code here...
 	qDebug() << "FIX: send message to other peers: " << textline->text();
 
 	// Define message QMap
-	message_map["ChatText"] = textline->text();
-	stream << message_map;
+	messageMap["ChatText"] = textline->text();
+	stream << messageMap;
 
-	qDebug() << "message in stream: " << message_map["ChatText"];
+	qDebug() << "message in stream: " << messageMap["ChatText"];
 
 	textview->append(textline->text());
 
