@@ -115,7 +115,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "message in sock: " << sock;
 
 
-	for (int p = myPortMin; p <= myPortMax; p++) {
+	for (int p = QUdpSocket::myPortMin; p <= QUdpSocket::myPortMax; p++) {
 		if (sock->localPort() != p) {
 			sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, p);
 		}
