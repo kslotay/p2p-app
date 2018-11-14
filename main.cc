@@ -60,7 +60,11 @@ void ChatDialog::readPendingMessages()
 
 		qDebug() << "message in sender: " << sender;
 		qDebug() << "message in senderPort: " << senderPort;
-		qDebug() << "message in datagram: " << datagram.data();
+        qDebug() << "data size: " << datagram.size();
+
+        QString str = datagram.data();
+
+		qDebug() << "message in datagram: " << str;
 
 	}
 }
