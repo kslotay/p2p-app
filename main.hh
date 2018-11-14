@@ -29,7 +29,7 @@ public:
 	ChatDialog();
 	NetSocket *sock;
 	void sendMessage(QByteArray);
-	void processMessage(char* datagram)
+//	void processMessage(char* datagram)
 
 
 public slots:

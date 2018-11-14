@@ -62,7 +62,7 @@ void ChatDialog::readPendingMessages()
 		qDebug() << "message in senderPort: " << senderPort;
 		qDebug() << "message in datagram: " << datagram.data();
 
-		QString message = datagram.data()
+		QString message = datagram.data();
 		textview->append(message);
 
 	}
