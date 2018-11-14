@@ -29,7 +29,7 @@ public:
 	ChatDialog();
 	NetSocket *sock;
 	void sendMessage(QByteArray);
-	void processMessage(QByteArray)
+	void processMessage(QByteArray);
 
 
 public slots:
