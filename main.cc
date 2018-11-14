@@ -92,7 +92,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
 
-	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36768);
+	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36769);
 
 }
 
