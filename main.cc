@@ -51,6 +51,8 @@ void ChatDialog::readPendingMessages()
 {
 	while (sock->hasPendingDatagrams()) {
 		QByteArray datagram;
+//        QDataStream stream(&datagram,  QIODevice::ReadWrite);
+        QMap<QString, QVariant> message_map;
 		datagram.resize(sock->pendingDatagramSize());
 		QHostAddress sender;
 		quint16 senderPort;
@@ -62,9 +64,13 @@ void ChatDialog::readPendingMessages()
 		qDebug() << "message in senderPort: " << senderPort;
         qDebug() << "data size: " << datagram.size();
 
-        QString str = datagram.data();
+//        QMap<QString, QVariant> msg_map = QString(stream);
 
-		qDebug() << "message in datagram: " << str;
+//        message_map << datagram.data();
+
+        qDebug() << "message in datagram: " << datagram.data();
+
+//		textview->append(str);
 
 	}
 }
@@ -95,7 +101,11 @@ void ChatDialog::gotReturnPressed()
 
 void ChatDialog::sendMessage(QByteArray buffer)
 {
-	qDebug() << "message in buff: " << buffer;
+    QMap<QString, QVariant> msg_map;
+
+    msg_map << buffer;
+
+	qDebug() << "message in buff: " << msg_map;
 	qDebug() << "message in sock: " << sock;
 
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36769);
