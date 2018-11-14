@@ -73,7 +73,7 @@ void ChatDialog::processMessage(QByteArray datagramReceived)
 
 	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
 
-	messageMap << stream;
+	messageMap >> stream;
 
 	if (messageMap.contains("ChatText")) {
 		qDebug() << "message contains chattext";
