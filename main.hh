@@ -6,25 +6,6 @@
 #include <QLineEdit>
 #include <QUdpSocket>
 
-class ChatDialog : public QDialog
-{
-	Q_OBJECT
-
-	public:
-		ChatDialog();
-		NetSocket *sock;
-
-		void sendMessage();
-
-
-	public slots:
-		void gotReturnPressed();
-
-	private:
-		QTextEdit *textview;
-		QLineEdit *textline;
-};
-
 class NetSocket : public QUdpSocket
 {
 	Q_OBJECT
@@ -37,6 +18,25 @@ class NetSocket : public QUdpSocket
 
 	private:
 		int myPortMin, myPortMax;
+};
+
+
+class ChatDialog : public QDialog
+{
+	Q_OBJECT
+
+public:
+	ChatDialog();
+	NetSocket *sock;
+	void sendMessage();
+
+
+public slots:
+			void gotReturnPressed();
+
+private:
+	QTextEdit *textview;
+	QLineEdit *textline;
 };
 
 #endif // P2PAPP_MAIN_HH
