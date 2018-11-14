@@ -36,6 +36,7 @@ ChatDialog::ChatDialog()
 	sock = new NetSocket();
 	if (!sock->bind())
 		exit(1);
+	qDebug() << "my current port : " << sock->localPort();
 
 	// Register a callback on the textline's returnPressed signal
 	// so that we can send the message entered by the user.
@@ -114,6 +115,10 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
 
+
+//	for (int p = myPortMin; p <= myPortMax; p++) {
+//
+//	}
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36769);
 
 }
