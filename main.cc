@@ -61,6 +61,8 @@ void ChatDialog::gotReturnPressed()
 
 	qint64 bytesSent = sock.writeDatagram(stream, QHostAddress(QHostAddress::LocalHost));
 
+	qDebug() << "message in byte sent: " << bytesSent;
+
 
 
 
