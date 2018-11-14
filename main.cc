@@ -42,11 +42,12 @@ void ChatDialog::gotReturnPressed()
 {
 	QByteArray buffer;
 	QDataStream stream(&buffer,  QIODevice::WriteOnly);
+	QMap<QString, QVariant> message_map;
 
 	// Initially, just echo the string locally.
 	// Insert some networking code here...
 	qDebug() << "FIX: send message to other peers: " << textline->text();
-	QVariantMap<QString, QVariant> message_map;
+
 	message_map["ChatText"] = textline->text();
 	stream << message_map;
 	qDebug() << stream;
