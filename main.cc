@@ -46,7 +46,7 @@ ChatDialog::ChatDialog()
 void ChatDialog::gotReturnPressed()
 {
 	QByteArray buffer;
-	QDataStream stream(&buffer,  QIODevice::WriteOnly);
+	QDataStream stream(&buffer,  QIODevice::ReadWrite);
 	QMap<QString, QVariant> message_map;
 
 	// Initially, just echo the string locally.
