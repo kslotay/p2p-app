@@ -59,19 +59,19 @@ void ChatDialog::gotReturnPressed()
 
 	qDebug() << "message in stream: " << message_map["ChatText"];
 
-	qint64 bytesSent = sock.writeDatagram(stream, QHostAddress(QHostAddress::LocalHost));
-
-	qDebug() << "message in byte sent: " << bytesSent;
-
-
-
-
-
 
 	textview->append(textline->text());
 
+	sendMessage(buffer);
+
 	// Clear the textline to get ready for the next input message.
 	textline->clear();
+}
+
+void ChatDialog::sendMessage(QByteArray buffer)
+{
+	qDebug() << "message in buff: " << buffer;
+	qDebug() << "message in sock: " << sock;
 }
 
 NetSocket::NetSocket()
