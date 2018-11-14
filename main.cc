@@ -78,7 +78,7 @@ void ChatDialog::processMessage(QByteArray datagramReceived)
 	if (messageMap.contains("ChatText")) {
 		qDebug() << "message contains chattext" << messageMap.value("ChatText").toString();
 
-//		textview->append(messageMap.value("ChatText"));
+		textview->append(messageMap.value("ChatText"));
 
 	}
 
