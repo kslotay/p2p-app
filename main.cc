@@ -37,6 +37,12 @@ ChatDialog::ChatDialog()
 	if (!sock->bind())
 		exit(1);
 
+	// Initialize user-defined variables
+	nextSeqNum = 1;
+	origin = QString(sock->localPort());
+
+	qDebug() << "origin: " << origin;
+
 	// Register a callback on the textline's returnPressed signal
 	// so that we can send the message entered by the user.
 	connect(textline, SIGNAL(returnPressed()),
@@ -77,9 +83,10 @@ void ChatDialog::processMessage(QByteArray datagramReceived)
 
 	if (messageMap.contains("ChatText")) {
 		qDebug() << "message contains chattext" << messageMap.value("ChatText").toString();
+		qDebug() << "message contains origin" << messageMap.value("Origin").toString();
+		qDebug() << "message contains seqnum" << messageMap.value("SeqNo").toString();
 
 		textview->append(messageMap.value("ChatText").toString());
-
 	}
 
 
@@ -97,6 +104,8 @@ void ChatDialog::gotReturnPressed()
 
 	// Define message QMap
 	messageMap["ChatText"] = textline->text();
+	messageMap["Origin"] = origin;
+	messageMap["SeqNo"] = nextSeqNum;
 	stream << messageMap;
 
 	qDebug() << "message in stream: " << messageMap["ChatText"];

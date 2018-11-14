@@ -29,6 +29,8 @@ class ChatDialog : public QDialog
 public:
 	ChatDialog();
 	NetSocket *sock;
+	int nextSeqNum;
+	QString origin;
 	void sendMessage(QByteArray);
 	void processMessage(QByteArray);
 
