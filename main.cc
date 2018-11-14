@@ -41,6 +41,26 @@ ChatDialog::ChatDialog()
 	// so that we can send the message entered by the user.
 	connect(textline, SIGNAL(returnPressed()),
 		this, SLOT(gotReturnPressed()));
+
+	// callback fired when message is received
+	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
+}
+
+void ChatDialog::readPendingMessages()
+{
+	while (sock->hasPendingDatagrams()) {
+		QByteArray datagram;
+		datagram.resize(sock->pendingDatagramSize());
+		QHostAddress sender;
+		quint16 senderPort;
+
+		sock->readDatagram(datagram.data(), datagram.size(),
+								&sender, &senderPort);
+
+
+		qDebug() << "message in datagram: " << datagram;
+
+	}
 }
 
 void ChatDialog::gotReturnPressed()
@@ -71,6 +91,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 {
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
+
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, 36768);
 
 }

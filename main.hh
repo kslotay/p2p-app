@@ -32,7 +32,8 @@ public:
 
 
 public slots:
-			void gotReturnPressed();
+	void gotReturnPressed();
+	void readPendingMessages();
 
 private:
 	QTextEdit *textview;
