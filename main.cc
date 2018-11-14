@@ -76,7 +76,7 @@ void ChatDialog::processMessage(QByteArray datagramReceived)
 	messageMap << stream;
 
 	if (messageMap.contains("ChatText")) {
-		qDebug() << "message contains chattext"
+		qDebug() << "message contains chattext";
 	}
 
 
