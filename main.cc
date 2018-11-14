@@ -121,7 +121,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	index = rand() % peerList.size();
 
 	qDebug() << "Sending to peer:" << peerList[index];
-	
+
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
 
 }
@@ -143,7 +143,7 @@ QList<int> NetSocket::PeerList()
 {
     QList<int> peerList;
 	for (int p = myPortMin; p <= myPortMax; p++) {
-	    if (this->localPost() != p) {
+	    if (this->localPort() != p) {
             peerList.append(p);
 	    }
 	}
