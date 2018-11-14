@@ -10,29 +10,33 @@ class ChatDialog : public QDialog
 {
 	Q_OBJECT
 
-public:
-	ChatDialog();
+	public:
+		ChatDialog();
+		NetSocket *sock;
 
-public slots:
-	void gotReturnPressed();
+		void sendMessage();
 
-private:
-	QTextEdit *textview;
-	QLineEdit *textline;
+
+	public slots:
+		void gotReturnPressed();
+
+	private:
+		QTextEdit *textview;
+		QLineEdit *textline;
 };
 
 class NetSocket : public QUdpSocket
 {
 	Q_OBJECT
 
-public:
-	NetSocket();
+	public:
+		NetSocket();
 
-	// Bind this socket to a P2Papp-specific default port.
-	bool bind();
+		// Bind this socket to a P2Papp-specific default port.
+		bool bind();
 
-private:
-	int myPortMin, myPortMax;
+	private:
+		int myPortMin, myPortMax;
 };
 
 #endif // P2PAPP_MAIN_HH
