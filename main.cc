@@ -44,6 +44,7 @@ ChatDialog::ChatDialog()
 
 	// callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
+
 }
 
 void ChatDialog::readPendingMessages()
