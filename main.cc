@@ -48,7 +48,7 @@ ChatDialog::ChatDialog()
 	connect(textline, SIGNAL(returnPressed()),
 		this, SLOT(gotReturnPressed()));
 
-	// callback fired when message is received
+	// Callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
 
 }
@@ -64,48 +64,98 @@ void ChatDialog::readPendingMessages()
 		sock->readDatagram(datagram.data(), datagram.size(),
 								&sender, &senderPort);
 
-		qDebug() << "message in sender: " << sender;
-		qDebug() << "message in senderPort: " << senderPort;
+		qDebug() << "\nDEBUG: RECEIVING MESSAGE";
+		qDebug() << "message sender: " << sender;
+		qDebug() << "message senderPort: " << senderPort;
 		qDebug() << "message in datagram: " << datagram.data();
 
 		processMessage(datagram, sender, senderPort);
 	}
 }
-//
+// Process the message read from pending messages from sock
 void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort)
 {
 	QMap<QString, QVariant> messageMap;
 	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
-	QMap<QString, QString> message;
+	QMap<quint32, QString> message;
 
+	// Put stream into messageMap
 	stream >> messageMap;
 
 	if (messageMap.contains("ChatText")) {
 		QString msg_chattext = messageMap.value("ChatText").toString();
 		QString msg_origin = messageMap.value("Origin").toString();
-		QString msg_seqnum = messageMap.value("SeqNo").toString();
+		quint32 msg_seqnum = messageMap.value("SeqNo").toUInt();
 
 		qDebug() << "message contains chattext: " << msg_chattext;
 		qDebug() << "message contains origin: " << msg_origin;
 		qDebug() << "message contains seqnum: " << msg_seqnum;
 
-//		qDebug() << "current statusMap: " << statusMap;
-
-		message[msg_seqnum] = msg_chattext;
-		qDebug() << "current message: " << message;
-
-//		messageList[msg_origin] = message[msg_seqnum];
-//		qDebug() << "current messageList: " << messageList;
+		// If statusMap[msg_origin] = 0, this is a new peer not on list
+		// Set expected msg_num to 1
+		if (statusMap[msg_origin] == 0) {
+			statusMap[msg_origin] = 1;
+		}
 
 		// Modify statusMap before executing sendStatusMessage
-		// If origin already in statusMap, seqno+1, if not in list add origin, seqno+1
+		// If origin already in statusMap, seqno+1
+		if (statusMap[msg_origin] == msg_seqnum) {
+			// New expected message received
+			qDebug() << "\nnew message received with seqnum: " << msg_seqnum;
+			statusMap[msg_origin] = msg_seqnum+1;
 
-		textview->append(messageMap.value("ChatText").toString());
+			// Store into messageList, adding to existing nested QMap
+			message = messageList[msg_origin];
+			message[msg_seqnum] = msg_chattext;
+			messageList[msg_origin] = message;
+
+			qDebug() << "current message: " << message;
+			qDebug() << "current messageList: " << messageList;
+
+			// Show in chatdialog textview
+			textview->append(messageMap.value("ChatText").toString());
+		}
+		else if (statusMap[msg_origin] > msg_seqnum) {
+			// If expected message number greater than one being received
+			// Message has already been seen, ignore
+			qDebug() << "message already seen: " << msg_seqnum;
+		}
+		else {
+			qDebug() << "waiting for msg with msgnum: " << statusMap[msg_origin];
+		}
+
+		qDebug() << "DEBUG: current statusMap: " << statusMap;
 
 		sendStatusMessage(sender, senderPort);
+
+		// Check if origin already in messageList
+		// If there, add to existing map, else add message map as value
+		// to origin key
+
+//		qDebug() << "CHECKVAR: messageList[msg_origin]: " << messageList[msg_origin];
+
+//		message = messageList[msg_origin];
+//		if (!message.contains(msg_seqnum)) {
+//			message[msg_seqnum] = msg_chattext;
+//			messageList[msg_origin] = message;
+//		}
+//		else {
+//			message[msg_seqnum] = msg_chattext;
+//			messageList[msg_origin] = message;
+//		}
+
 	}
 	else if (messageMap.contains("Want")) {
-		qDebug() << "message contains want" << messageMap.value("Want").toString();
+		// If message is a statusMessage, handle as QMap<QString, quint32>
+		QMap<QString, quint32> wantMap;
+
+		// Put stream data into wantMap
+		stream >> wantMap;
+
+		qDebug() << "\nDEBUG: message contains want:" << wantMap;
+
+		// Compare statusMaps
+		// and forward/request required messages
 	}
 
 }
@@ -134,6 +184,9 @@ void ChatDialog::gotReturnPressed()
 
 	sendMessage(buffer);
 
+	// If local message being forwarded, increment, else don't
+	nextSeqNum++;
+
 	// Clear the textline to get ready for the next input message.
 	textline->clear();
 }
@@ -160,13 +213,13 @@ void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
 	QDataStream stream(&buffer,  QIODevice::ReadWrite);
 	QMap<QString, QMap<QString, quint32>> statusMessage;
 
+	// Define message QMap
+	statusMessage["Want"] = statusMap;
+
+	qDebug() << "\nSending statusMessage: " << statusMessage["Want"];
 	qDebug() << "message in buff: " << buffer;
 	qDebug() << "message in sock: " << sock;
 	qDebug() << "sending to peer: " << port;
-
-	// Define message QMap
-	statusMessage["Want"] = statusMap;
-	qDebug() << "statusMap: " << statusMessage["Want"];
 
 	stream << statusMessage;
 
