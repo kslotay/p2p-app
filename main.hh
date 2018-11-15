@@ -31,7 +31,8 @@ public:
 	NetSocket *sock;
 	int nextSeqNum;
 	QString origin;
-	QMap<QString, quint32> statusList;
+	QMap<QString, quint32> statusMap;
+	QMap<QString, QMap<quint32, QString>> messageList;
 	void sendMessage(QByteArray);
 	void sendStatusMessage(QHostAddress sendto, int port);
 	void processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort);

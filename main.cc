@@ -76,15 +76,29 @@ void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender
 {
 	QMap<QString, QVariant> messageMap;
 	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
+	QMap<QString, QString> message;
 
 	stream >> messageMap;
 
 	if (messageMap.contains("ChatText")) {
-		qDebug() << "message contains chattext" << messageMap.value("ChatText").toString();
-		qDebug() << "message contains origin" << messageMap.value("Origin").toString();
-		qDebug() << "message contains seqnum" << messageMap.value("SeqNo").toString();
+		QString msg_chattext = messageMap.value("ChatText").toString();
+		QString msg_origin = messageMap.value("Origin").toString();
+		QString msg_seqnum = messageMap.value("SeqNo").toString();
 
-		//If origin already in statusList, seqno+1, if not in list add origin, seqno+1
+		qDebug() << "message contains chattext: " << msg_chattext;
+		qDebug() << "message contains origin: " << msg_origin;
+		qDebug() << "message contains seqnum: " << msg_seqnum;
+
+//		qDebug() << "current statusMap: " << statusMap;
+
+		message[msg_seqnum] = msg_chattext;
+		qDebug() << "current message: " << message;
+
+//		messageList[msg_origin] = message[msg_seqnum];
+//		qDebug() << "current messageList: " << messageList;
+
+		// Modify statusMap before executing sendStatusMessage
+		// If origin already in statusMap, seqno+1, if not in list add origin, seqno+1
 
 		textview->append(messageMap.value("ChatText").toString());
 
@@ -112,7 +126,9 @@ void ChatDialog::gotReturnPressed()
 	messageMap["SeqNo"] = nextSeqNum;
 	stream << messageMap;
 
-	qDebug() << "message in stream: " << messageMap["ChatText"];
+	qDebug() << "message in chattext: " << messageMap["ChatText"];
+	qDebug() << "message in origin: " << messageMap["Origin"];
+	qDebug() << "message in seqno: " << messageMap["SeqNo"];
 
 	textview->append(textline->text());
 
@@ -136,7 +152,6 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	qDebug() << "Sending to peer:" << peerList[index];
 
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
-
 }
 
 void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
@@ -150,8 +165,8 @@ void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
 	qDebug() << "sending to peer: " << port;
 
 	// Define message QMap
-	statusMessage["Want"] = statusList;
-	qDebug() << "statusList: " << statusMessage["Want"];
+	statusMessage["Want"] = statusMap;
+	qDebug() << "statusMap: " << statusMessage["Want"];
 
 	stream << statusMessage;
 
