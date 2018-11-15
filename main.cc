@@ -155,6 +155,14 @@ void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender
 		qDebug() << "\nDEBUG: message contains want:" << wantMap;
 
 		// Compare statusMaps
+		if (wantMap != statusMap) {
+			qDebug() << "\nDEBUG: message wantMap different from statusMap:" << wantMap;
+		}
+		else {
+			qDebug() << "\nDEBUG: message wantMap equal to statusMap:" << wantMap;
+		}
+
+
 		// and forward/request required messages
 	}
 
