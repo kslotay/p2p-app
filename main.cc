@@ -157,9 +157,11 @@ void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender
 		// Compare statusMaps
 		if (wantMap != statusMap) {
 			qDebug() << "\nDEBUG: message wantMap different from statusMap:" << wantMap;
+			// Loop through maps and compare values for keys
 		}
 		else {
 			qDebug() << "\nDEBUG: message wantMap equal to statusMap:" << wantMap;
+			// Coin flip and randomly send, or stop
 		}
 
 
@@ -189,6 +191,8 @@ void ChatDialog::gotReturnPressed()
 	qDebug() << "message in seqno: " << messageMap["SeqNo"];
 
 	textview->append(textline->text());
+
+	// Append message to messageList
 
 	sendMessage(buffer);
 
