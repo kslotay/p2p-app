@@ -29,13 +29,16 @@ class ChatDialog : public QDialog
 public:
 	ChatDialog();
 	NetSocket *sock;
-	int nextSeqNum;
-	QString origin;
-	QMap<QString, quint32> statusMap;
-	QMap<QString, QMap<quint32, QString>> messageList;
+	int currentSeqNum;
+	QString local_origin;
+	QMap<QString, quint32> localStatusMap;
+	QMap<QString, QMap<quint32, QMap<QString, QVariant>>> messageList;
 	void sendMessage(QByteArray);
 	void sendStatusMessage(QHostAddress sendto, int port);
-	void processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort);
+	void processIncomingData(QByteArray datagramReceived, QHostAddress sender, int senderPort);
+	QByteArray serializeMessage(QString messageText);
+	void processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, int senderPort);
+	void processStatusMessage(QMap<QString, QMap<QString, quint32>> peerWantMap, QHostAddress sender, int senderPort);
 
 
 public slots:

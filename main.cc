@@ -38,10 +38,11 @@ ChatDialog::ChatDialog()
 		exit(1);
 
 	// Initialize user-defined variables
-	nextSeqNum = 1;
-	origin = QString(sock->localPort());
+	currentSeqNum = 1;
+	// TODO: randomize origin with different seeds
+	local_origin = QString::number(sock->localPort());
 
-	qDebug() << "origin: " << origin;
+	qDebug() << "LOCAL ORIGIN: " << local_origin;
 
 	// Register a callback on the textline's returnPressed signal
 	// so that we can send the message entered by the user.
@@ -65,139 +66,201 @@ void ChatDialog::readPendingMessages()
 								&sender, &senderPort);
 
 		qDebug() << "\nDEBUG: RECEIVING MESSAGE";
-		qDebug() << "message sender: " << sender;
-		qDebug() << "message senderPort: " << senderPort;
-		qDebug() << "message in datagram: " << datagram.data();
 
-		processMessage(datagram, sender, senderPort);
+		processIncomingData(datagram, sender, senderPort);
 	}
 }
-// Process the message read from pending messages from sock
-void ChatDialog::processMessage(QByteArray datagramReceived, QHostAddress sender, int senderPort)
+
+void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, int senderPort)
 {
-	QMap<QString, QVariant> messageMap;
-	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
-	QMap<quint32, QString> message;
+	QString msg_chattext = messageReceived.value("ChatText").toString();
+	QString msg_origin = messageReceived.value("Origin").toString();
+	quint32 msg_seqnum = messageReceived.value("SeqNo").toUInt();
 
-	// Put stream into messageMap
-	stream >> messageMap;
+	qDebug() << "message contains chattext: " << msg_chattext;
+	qDebug() << "message contains origin: " << msg_origin;
+	qDebug() << "message contains seqnum: " << msg_seqnum;
 
-	if (messageMap.contains("ChatText")) {
-		QString msg_chattext = messageMap.value("ChatText").toString();
-		QString msg_origin = messageMap.value("Origin").toString();
-		quint32 msg_seqnum = messageMap.value("SeqNo").toUInt();
+	// If localStatusMap[msg_origin] = 0, this is a new peer not on list
+	// Set expected msg_num to 1
+	if (localStatusMap.value(msg_origin) == 0) {
+		localStatusMap[msg_origin] = 1;
+	}
 
-		qDebug() << "message contains chattext: " << msg_chattext;
-		qDebug() << "message contains origin: " << msg_origin;
-		qDebug() << "message contains seqnum: " << msg_seqnum;
+	// Modify localStatusMap before executing sendStatusMessage
+	// If origin already in localStatusMap, seqno+1
+	if (localStatusMap.value(msg_origin) == msg_seqnum) {
+		
+		localStatusMap[msg_origin] = msg_seqnum+1;
 
-		// If statusMap[msg_origin] = 0, this is a new peer not on list
-		// Set expected msg_num to 1
-		if (statusMap[msg_origin] == 0) {
-			statusMap[msg_origin] = 1;
+		// Store into messageList, adding to existing nested QMap
+		messageList[msg_origin][msg_seqnum]["ChatText"] = msg_chattext;
+		messageList[msg_origin][msg_seqnum]["Origin"] = msg_origin;
+		messageList[msg_origin][msg_seqnum]["SeqNo"] = msg_seqnum;
+
+		qDebug() << "current messageList: " << messageList;
+
+		// Show in chatdialog textview
+		textview->append(msg_origin + ": " + messageReceived.value("ChatText").toString());
+	}
+	else if (localStatusMap[msg_origin] > msg_seqnum) {
+		// If expected message number greater than one being received
+		// Message has already been seen, ignore
+		qDebug() << "message already seen: " << msg_seqnum;
+	}
+	else {
+		qDebug() << "waiting for msg with msgnum: " << localStatusMap[msg_origin];
+	}
+
+	qDebug() << "DEBUG: localStatusMap: " << localStatusMap;
+
+	sendStatusMessage(sender, senderPort);
+}
+
+void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peerWantMap, QHostAddress sender, int senderPort) {
+	
+	QMap<QString, QVariant> messageToSend;
+	// Unwrap peerWant
+	QMap<QString, quint32> peerStatusMap = peerWantMap.value("Want");
+
+	// Create enum for differences in status
+	enum Status {INSYNC, AHEAD, BEHIND};
+
+	qDebug() << "\nDEBUG: message contains want:" << peerStatusMap;
+	qDebug() << "DEBUG: localStatusMap:" << localStatusMap;
+
+	// Set initial status
+	Status status = INSYNC;
+	// Compare statusMaps using localStatus keys
+	for (auto originKey : localStatusMap.keys()) {
+		if (!peerStatusMap.contains(originKey)){
+			status = AHEAD;
+			// Add message to message buffer from messageList
+			messageToSend = messageList[originKey][1];
+			break;
+		}
+		else if (peerStatusMap.value(originKey) < localStatusMap.value(originKey)) {
+			status = AHEAD;
+			// Add message to message buffer from messageList
+			messageToSend = messageList[originKey][peerStatusMap.value(originKey)];
+			break;
+		}
+		else if (peerStatusMap.value(originKey) > localStatusMap.value(originKey)) {
+			// Send status message
+			status = BEHIND;
+			break;
 		}
 
-		// Modify statusMap before executing sendStatusMessage
-		// If origin already in statusMap, seqno+1
-		if (statusMap[msg_origin] == msg_seqnum) {
-			// New expected message received
-			qDebug() << "\nnew message received with seqnum: " << msg_seqnum;
-			statusMap[msg_origin] = msg_seqnum+1;
-
-			// Store into messageList, adding to existing nested QMap
-			message = messageList[msg_origin];
-			message[msg_seqnum] = msg_chattext;
-			messageList[msg_origin] = message;
-
-			qDebug() << "current message: " << message;
-			qDebug() << "current messageList: " << messageList;
-
-			// Show in chatdialog textview
-			textview->append(messageMap.value("ChatText").toString());
-		}
-		else if (statusMap[msg_origin] > msg_seqnum) {
-			// If expected message number greater than one being received
-			// Message has already been seen, ignore
-			qDebug() << "message already seen: " << msg_seqnum;
-		}
-		else {
-			qDebug() << "waiting for msg with msgnum: " << statusMap[msg_origin];
-		}
-
-		qDebug() << "DEBUG: current statusMap: " << statusMap;
-
-		sendStatusMessage(sender, senderPort);
-
-		// Check if origin already in messageList
-		// If there, add to existing map, else add message map as value
-		// to origin key
-
-//		qDebug() << "CHECKVAR: messageList[msg_origin]: " << messageList[msg_origin];
-
-//		message = messageList[msg_origin];
-//		if (!message.contains(msg_seqnum)) {
-//			message[msg_seqnum] = msg_chattext;
-//			messageList[msg_origin] = message;
-//		}
-//		else {
-//			message[msg_seqnum] = msg_chattext;
-//			messageList[msg_origin] = message;
-//		}
+		qDebug() << "local: key: " << originKey << " value: " << localStatusMap.value(originKey);
+		qDebug() << "peer: key: " << originKey << " value: " << peerStatusMap.value(originKey);
 
 	}
-	else if (messageMap.contains("Want")) {
-		// If message is a statusMessage, handle as QMap<QString, quint32>
-		QMap<QString, quint32> wantMap;
 
-		// Put stream data into wantMap
-		stream >> wantMap;
-
-		qDebug() << "\nDEBUG: message contains want:" << wantMap;
-
-		// Compare statusMaps
-		if (wantMap != statusMap) {
-			qDebug() << "\nDEBUG: message wantMap different from statusMap:" << wantMap;
-			// Loop through maps and compare values for keys
+	// Compare statusMaps using peerStatus keys
+	for (auto originKey : peerStatusMap.keys()) {
+		if (!localStatusMap.contains(originKey)){
+			status = BEHIND;
+			// Add message to message buffer from messageList
+			messageToSend = messageList[originKey][1];
+			break;
 		}
-		else {
-			qDebug() << "\nDEBUG: message wantMap equal to statusMap:" << wantMap;
+		else if (localStatusMap.value(originKey) < peerStatusMap.value(originKey)) {
+			status = BEHIND;
+			// Add message to message buffer from messageList
+			messageToSend = messageList[originKey][localStatusMap.value(originKey)];
+			break;
+		}
+		else if (localStatusMap.value(originKey) > peerStatusMap.value(originKey)) {
+			// Send status message
+			status = AHEAD;
+			break;
+		}
+
+		qDebug() << "local: key: " << originKey << " value: " << localStatusMap.value(originKey);
+		qDebug() << "peer: key: " << originKey << " value: " << peerStatusMap.value(originKey);
+
+	}
+
+	switch (status) {
+		case INSYNC:
 			// Coin flip and randomly send, or stop
-		}
+			break;
+		case AHEAD:
+			//sendMessage(messageToSend);
+			break;
+		case BEHIND:
+			sendStatusMessage(sender, senderPort);
+			break;
+	}
+}
 
+// Process the message read from pending messages from sock
+void ChatDialog::processIncomingData(QByteArray datagramReceived, QHostAddress sender, int senderPort)
+{
+	// Stream for both msg and want, as stream is emptied on read
+	QMap<QString, QVariant> messageReceived;
+	QDataStream stream_msg(&datagramReceived,  QIODevice::ReadOnly);
 
-		// and forward/request required messages
+	stream_msg >> messageReceived;
+
+	QMap<QString, QMap<QString, quint32>> peerWantMap;
+	QDataStream stream_want(&datagramReceived,  QIODevice::ReadOnly);
+
+	stream_want >> peerWantMap;
+
+	qDebug() << "messageReceived: " << messageReceived;
+	qDebug() << "wantMap: " << peerWantMap;
+
+	if (messageReceived.contains("ChatText")) {
+		processReceivedMessage(messageReceived, sender, senderPort);
+	}
+	else if (peerWantMap.contains("Want")) {
+		processStatusMessage(peerWantMap, sender, senderPort);
 	}
 
+}
+
+QByteArray ChatDialog::serializeMessage(QString messageText)
+{
+	QVariantMap messageMap;
+
+	messageMap.insert("ChatText", messageText);
+	messageMap.insert("Origin", local_origin);
+	messageMap.insert("SeqNo",currentSeqNum);
+
+
+	// if we have already seen this origin
+	if(messageList.contains(local_origin)) {
+		messageList[local_origin][currentSeqNum] = messageMap;
+	} 
+	else {
+		messageList[local_origin][currentSeqNum] = messageMap;
+	}
+
+	QByteArray buffer;
+	QDataStream stream(&buffer,  QIODevice::ReadWrite);
+
+	stream << messageMap;
+
+	return buffer;
 }
 
 void ChatDialog::gotReturnPressed()
 {
-	QByteArray buffer;
-	QDataStream stream(&buffer,  QIODevice::ReadWrite);
-	QMap<QString, QVariant> messageMap;
 
-	// Initially, just echo the string locally.
-	// Insert some networking code here...
-	qDebug() << "FIX: send message to other peers: " << textline->text();
+	QString text = textline->text();
+	
+	QByteArray messageBuffer = serializeMessage(text);
 
-	// Define message QMap
-	messageMap["ChatText"] = textline->text();
-	messageMap["Origin"] = origin;
-	messageMap["SeqNo"] = nextSeqNum;
-	stream << messageMap;
+	textview->append(local_origin + ": " + textline->text());
 
-	qDebug() << "message in chattext: " << messageMap["ChatText"];
-	qDebug() << "message in origin: " << messageMap["Origin"];
-	qDebug() << "message in seqno: " << messageMap["SeqNo"];
+	// Append to localStatusMap
+	localStatusMap[local_origin] = currentSeqNum+1;
 
-	textview->append(textline->text());
-
-	// Append message to messageList
-
-	sendMessage(buffer);
+	sendMessage(messageBuffer);
 
 	// If local message being forwarded, increment, else don't
-	nextSeqNum++;
+	currentSeqNum++;
 
 	// Clear the textline to get ready for the next input message.
 	textline->clear();
@@ -205,9 +268,6 @@ void ChatDialog::gotReturnPressed()
 
 void ChatDialog::sendMessage(QByteArray buffer)
 {
-	qDebug() << "message in buff: " << buffer;
-	qDebug() << "message in sock: " << sock;
-
 	QList<int> peerList = sock->PeerList();
 
 	qDebug() << "Peer List: " << peerList;
@@ -226,11 +286,11 @@ void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
 	QMap<QString, QMap<QString, quint32>> statusMessage;
 
 	// Define message QMap
-	statusMessage["Want"] = statusMap;
+	statusMessage["Want"] = localStatusMap;
 
 	qDebug() << "\nSending statusMessage: " << statusMessage["Want"];
-	qDebug() << "message in buff: " << buffer;
-	qDebug() << "message in sock: " << sock;
+//	qDebug() << "message in buff: " << buffer;
+//	qDebug() << "message in sock: " << sock;
 	qDebug() << "sending to peer: " << port;
 
 	stream << statusMessage;
@@ -285,7 +345,6 @@ int main(int argc, char **argv)
 	// Create an initial chat dialog window
 	ChatDialog dialog;
 	dialog.show();
-
 
 	// Enter the Qt main loop; everything else is event driven
 	return app.exec();
