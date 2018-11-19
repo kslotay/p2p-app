@@ -4,7 +4,6 @@
 #include <QVBoxLayout>
 #include <QApplication>
 #include <QDebug>
-
 #include "main.hh"
 
 ChatDialog::ChatDialog()
@@ -37,10 +36,20 @@ ChatDialog::ChatDialog()
 	if (!sock->bind())
 		exit(1);
 
+	// // Initialize timer for message timeout
+	QTimer *timer = new QTimer(this);
+	connect(timer, SIGNAL(timeout()), this, SLOT(timeoutHandler()));
+
+	QTimer *antiEntropyTimer = new QTimer(this);
+	connect(antiEntropyTimer, SIGNAL(timeout()), this, SLOT(antiEntropyHandler()));
+	
+	antiEntropyTimer->start(10000);	
 	// Initialize user-defined variables
 	currentSeqNum = 1;
 	// TODO: randomize origin with different seeds
 	local_origin = QString::number(sock->localPort());
+
+	pingList = sock->PeerList();
 
 	qDebug() << "LOCAL ORIGIN: " << local_origin;
 
@@ -52,6 +61,8 @@ ChatDialog::ChatDialog()
 	// Callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
 
+	// Send a ping
+	sendPingMessage(QHostAddress::LocalHost, pingList[0]);
 }
 
 void ChatDialog::readPendingMessages()
@@ -73,16 +84,14 @@ void ChatDialog::readPendingMessages()
 
 void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, int senderPort)
 {
-	QString msg_chattext = messageReceived.value("ChatText").toString();
 	QString msg_origin = messageReceived.value("Origin").toString();
 	quint32 msg_seqnum = messageReceived.value("SeqNo").toUInt();
 
-	qDebug() << "message contains chattext: " << msg_chattext;
 	qDebug() << "message contains origin: " << msg_origin;
 	qDebug() << "message contains seqnum: " << msg_seqnum;
 
 	// If localStatusMap[msg_origin] = 0, this is a new peer not on list
-	// Set expected msg_num to 1
+	// Set expected msg_num to 1 for comparison
 	if (localStatusMap.value(msg_origin) == 0) {
 		localStatusMap[msg_origin] = 1;
 	}
@@ -91,26 +100,27 @@ void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived,
 	// If origin already in localStatusMap, seqno+1
 	if (localStatusMap.value(msg_origin) == msg_seqnum) {
 		
+		messageList[msg_origin][msg_seqnum] = messageReceived;
+
 		localStatusMap[msg_origin] = msg_seqnum+1;
-
-		// Store into messageList, adding to existing nested QMap
-		messageList[msg_origin][msg_seqnum]["ChatText"] = msg_chattext;
-		messageList[msg_origin][msg_seqnum]["Origin"] = msg_origin;
-		messageList[msg_origin][msg_seqnum]["SeqNo"] = msg_seqnum;
-
-		qDebug() << "current messageList: " << messageList;
-
+		
 		// Show in chatdialog textview
 		textview->append(msg_origin + ": " + messageReceived.value("ChatText").toString());
+
+		// TODO: Forward message to random peer (not including one received from)
+		sendMessage(serializeMessage(messageReceived));
+
 	}
-	else if (localStatusMap[msg_origin] > msg_seqnum) {
+	else if (localStatusMap.value(msg_origin) > msg_seqnum) {
 		// If expected message number greater than one being received
 		// Message has already been seen, ignore
 		qDebug() << "message already seen: " << msg_seqnum;
 	}
 	else {
-		qDebug() << "waiting for msg with msgnum: " << localStatusMap[msg_origin];
+		qDebug() << "waiting for msg with msgnum: " << localStatusMap.value(msg_origin);
 	}
+
+	timer->stop();
 
 	qDebug() << "DEBUG: localStatusMap: " << localStatusMap;
 
@@ -156,41 +166,72 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 
 	}
 
-	// Compare statusMaps using peerStatus keys
+	// Check for keys in peerStatusMap that are not in localStatusMap
 	for (auto originKey : peerStatusMap.keys()) {
 		if (!localStatusMap.contains(originKey)){
 			status = BEHIND;
-			// Add message to message buffer from messageList
-			messageToSend = messageList[originKey][1];
 			break;
 		}
-		else if (localStatusMap.value(originKey) < peerStatusMap.value(originKey)) {
-			status = BEHIND;
-			// Add message to message buffer from messageList
-			messageToSend = messageList[originKey][localStatusMap.value(originKey)];
-			break;
-		}
-		else if (localStatusMap.value(originKey) > peerStatusMap.value(originKey)) {
-			// Send status message
-			status = AHEAD;
-			break;
-		}
+		// else if (localStatusMap.value(originKey) < peerStatusMap.value(originKey)) {
+		// 	status = BEHIND;
+		// 	break;
+		// }
+		// else if (localStatusMap.value(originKey) > peerStatusMap.value(originKey)) {
+		// 	status = AHEAD;
+		// 	// Add message to message buffer from messageList
+		// 	messageToSend = messageList[originKey][peerStatusMap.value(originKey)];
+		// 	break;
+		// }
 
 		qDebug() << "local: key: " << originKey << " value: " << localStatusMap.value(originKey);
 		qDebug() << "peer: key: " << originKey << " value: " << peerStatusMap.value(originKey);
 
 	}
+	timer->stop();
 
 	switch (status) {
 		case INSYNC:
 			// Coin flip and randomly send, or stop
+			srand(time(0));
+
+			if((rand() % 2) == 1) {
+				// start rumor
+
+				qDebug() << "COIN FLIP ABOUT TO SEND";
+				sendMessage(last_message_sent);
+			}
+			else {
+				qDebug() << "COIN FLIP ABOUT TO STOP";
+			}
 			break;
 		case AHEAD:
-			//sendMessage(messageToSend);
+			sendMessage(serializeMessage(messageToSend));
 			break;
 		case BEHIND:
 			sendStatusMessage(sender, senderPort);
 			break;
+	}
+}
+
+void ChatDialog::processPingMessage(QHostAddress sender, int senderPort) {
+	// Send ping reply
+	sendPingReply(sender, senderPort);
+}
+
+void ChatDialog::processPingReply(QHostAddress sender, int senderPort) {
+	// Check timer, add to pingTimes, and remove port from pingList
+	int pingTime = pingTimer.elapsed();
+
+	pingTimes[senderPort] = pingTime;
+
+	pingList.removeFirst();
+
+	if (!pingList.empty()) {
+		pingTimer.restart();
+		sendPingMessage(sender, pingList[0]);
+	}
+	else {
+		qDebug() << "pingTimes: " << pingTimes;
 	}
 }
 
@@ -208,34 +249,41 @@ void ChatDialog::processIncomingData(QByteArray datagramReceived, QHostAddress s
 
 	stream_want >> peerWantMap;
 
+	// TODO: cleanup ping debugging
+	QMap<QString, QString> pingMap;
+	QDataStream stream_ping(&datagramReceived,  QIODevice::ReadOnly);
+	stream_ping >> pingMap;
+	qDebug() << "pingMap: " << pingMap;
+
 	qDebug() << "messageReceived: " << messageReceived;
 	qDebug() << "wantMap: " << peerWantMap;
 
 	if (messageReceived.contains("ChatText")) {
 		processReceivedMessage(messageReceived, sender, senderPort);
+
 	}
 	else if (peerWantMap.contains("Want")) {
 		processStatusMessage(peerWantMap, sender, senderPort);
 	}
+	else if (pingMap.contains("Ping")) {
+		processPingMessage(sender, senderPort);
+	}
+	else if (pingMap.contains("PingReply")) {
+		processPingReply(sender, senderPort);
+	}
 
+	timer->stop();
 }
 
-QByteArray ChatDialog::serializeMessage(QString messageText)
+QByteArray ChatDialog::serializeLocalMessage(QString messageText)
 {
 	QVariantMap messageMap;
 
 	messageMap.insert("ChatText", messageText);
 	messageMap.insert("Origin", local_origin);
-	messageMap.insert("SeqNo",currentSeqNum);
+	messageMap.insert("SeqNo", currentSeqNum);
 
-
-	// if we have already seen this origin
-	if(messageList.contains(local_origin)) {
-		messageList[local_origin][currentSeqNum] = messageMap;
-	} 
-	else {
-		messageList[local_origin][currentSeqNum] = messageMap;
-	}
+	messageList[local_origin][currentSeqNum] = messageMap;
 
 	QByteArray buffer;
 	QDataStream stream(&buffer,  QIODevice::ReadWrite);
@@ -245,19 +293,55 @@ QByteArray ChatDialog::serializeMessage(QString messageText)
 	return buffer;
 }
 
+QByteArray ChatDialog::serializeMessage(QMap<QString, QVariant> messageToSend)
+{
+	QVariantMap messageMap;
+
+	messageMap.insert("ChatText", messageToSend.value("ChatText"));
+	messageMap.insert("Origin", messageToSend.value("Origin"));
+	messageMap.insert("SeqNo", messageToSend.value("SeqNo"));
+
+	QByteArray buffer;
+	QDataStream stream(&buffer,  QIODevice::ReadWrite);
+
+	stream << messageMap;
+
+	return buffer;
+}
+
+void ChatDialog::timeoutHandler()
+{
+	qDebug() << "Time out occured";
+
+	sock->writeDatagram(last_message_sent, last_message_sent.size(), QHostAddress::LocalHost, senderPort);
+	
+	timer->start(1000);
+
+}
+
+void ChatDialog::antiEntropyHandler() 
+{
+	QList<int> peerList = sock->PeerList();
+
+	qDebug() << "Peer List: " << peerList;
+
+	int index = rand() % peerList.size();
+
+	sendStatusMessage(QHostAddress::LocalHost, peerList[index]);
+
+	antiEntropyTimer->start(10000);				
+}
+
 void ChatDialog::gotReturnPressed()
 {
-
 	QString text = textline->text();
-	
-	QByteArray messageBuffer = serializeMessage(text);
 
 	textview->append(local_origin + ": " + textline->text());
 
 	// Append to localStatusMap
 	localStatusMap[local_origin] = currentSeqNum+1;
 
-	sendMessage(messageBuffer);
+	sendMessage(serializeLocalMessage(text));
 
 	// If local message being forwarded, increment, else don't
 	currentSeqNum++;
@@ -275,8 +359,42 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	int index = rand() % peerList.size();
 
 	qDebug() << "Sending to peer:" << peerList[index];
-
+	
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
+	
+	timer->start(1000);
+}
+
+void ChatDialog::sendPingMessage(QHostAddress sendto, int port)
+{
+	QByteArray ping;
+	QDataStream stream(&ping,  QIODevice::ReadWrite);
+	
+	QMap<QString, QString> pingMsg;
+	pingMsg["Ping"] = "Ping";
+
+	stream << pingMsg;
+
+	qDebug() << "Sending ping to peer: " << port;
+	
+	pingTimer.start();
+	
+	sock->writeDatagram(ping, ping.size(), sendto, port);
+}
+
+void ChatDialog::sendPingReply(QHostAddress sendto, int port)
+{
+	QByteArray pingreply;
+	QDataStream stream(&pingreply,  QIODevice::ReadWrite);
+	
+	QMap<QString, QString> pingReply;
+	pingReply["PingReply"] = "PingReply";
+
+	stream << pingReply;
+
+	qDebug() << "Sending pingreply to peer: " << port;
+	
+	sock->writeDatagram(pingreply, pingreply.size(), sendto, port);
 }
 
 void ChatDialog::sendStatusMessage(QHostAddress sendto, int port)
