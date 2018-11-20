@@ -66,6 +66,26 @@ ChatDialog::ChatDialog()
 
 	// Callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
+
+	Ping();
+
+	if (neighborList.size() < 1) {
+		QList<int> peerList = sock->PeerList();
+
+		int index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+
+		peerList.removeOne(peerList[index]);
+		
+		index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+	}
+	else if (neighborList.size() < 2) {
+		QList<int> peerList = sock->PeerList();
+
+		int index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+	}
 }
 
 void ChatDialog::readPendingMessages()
@@ -142,11 +162,6 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 	qDebug() << "\nDEBUG: message contains want:" << peerStatusMap;
 	qDebug() << "DEBUG: localStatusMap:" << localStatusMap;
 
-	for (auto portNumber : last_message_sent.keys()) {
-
-		peerWantMap["Want"].contains(
-				last_message_sent[peerWantMap["Want"][portNumber].value("Origin").toString()]);
-	}
 
 	// Set initial status
 	Status status = INSYNC;
@@ -196,10 +211,9 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 
 				qDebug() << "COIN FLIP ABOUT TO SEND";
 
-
 			}
 			else {
-				qDebug() << "COIN FLIP ABOUT TO STOP";
+				// qDebug() << "COIN FLIP ABOUT TO STOP";
 			}
 			break;
 		case AHEAD:
@@ -225,15 +239,22 @@ void ChatDialog::processPingReply(QHostAddress sender, quint16 senderPort) {
 
 	pingTimes[senderPort] = pingTime;
 
-	pingList.removeFirst();
+	pingList.removeOne(senderPort);
 
-	if (!pingList.empty()) {
-		pingTimer.restart();
-		sendPingMessage(sender, pingList[0]);
+	qDebug() << "pingTimes: " << pingTimes;
+
+	if (pingTimes.size() > 1) {
+		// take minimum ping as neighbor
+		// neighborList.append();
 	}
-	else {
-		qDebug() << "pingTimes: " << pingTimes;
-	}
+	
+// 	if (!pingList.empty()) {
+// 		pingTimer.restart();
+// 		sendPingMessage(sender, pingList[0]);
+// 	}
+// 	else {
+// 		qDebug() << "pingTimes: " << pingTimes;
+// 	}
 }
 
 // Process the message read from pending messages from sock
@@ -325,6 +346,7 @@ void ChatDialog::timeoutHandler()
 		currentState.waitingForStatus = 0;
 	}
 	timer->stop();
+
 }
 
 void ChatDialog::antiEntropyHandler() 
@@ -338,6 +360,7 @@ void ChatDialog::antiEntropyHandler()
 	sendStatusMessage(QHostAddress::LocalHost, peerList[index]);
 
 	antiEntropyTimer->start(10000);
+
 }
 
 void ChatDialog::gotReturnPressed()
@@ -408,20 +431,36 @@ void ChatDialog::sendPingMessage(QHostAddress sendto, quint16 port)
 	sock->writeDatagram(ping, ping.size(), sendto, port);
 }
 
-void ChatDialog::Ping(QHostAddress sendto, quint16 port) {
-    
-//	 int timeout = 10000;
-//	 pintTimer.start();
-//
-//	 while (remainingTime > 0) {
-//	 	// Check if resend count limit is reached
-//	 	{
-//	 		int remainingTime = timeout - pingTimer.elapsed();
-//	 		sendPingMessage(QHostAddress::LocalHost, pingList[0]);
-//	 		// If peerlist is equal to two
-//	 	}
-//	 }
 
+void ChatDialog::Ping() {
+	int pingTimeout = 5000;
+	int attempts = 3;
+	pingFnTimer.start();
+
+	int remainingTime = pingTimeout - pingFnTimer.elapsed();
+	while ((remainingTime > 0) && (attempts > 0)) {
+		remainingTime = pingTimeout - pingFnTimer.elapsed();
+		
+		int timeout2 = 1600;
+	
+		if(pingTimer.elapsed() > 0) {
+			pingTimer.restart();	
+		}
+		else {
+			pingTimer.start();
+		}
+
+		for (int i = 0; i < pingList.size(); i++) {
+			sendPingMessage(QHostAddress::LocalHost, pingList[i]);
+		}
+
+		int remainingTime = timeout2 - pingTimer.elapsed();
+		while (remainingTime > 0) {
+			remainingTime = timeout2 - pingTimer.elapsed();
+		}
+
+		attempts--;
+	}
 }
 
 void ChatDialog::sendPingReply(QHostAddress sendto, quint16 port)
