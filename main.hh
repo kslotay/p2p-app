@@ -11,7 +11,7 @@
 // state struct for waiting ACK (status) or not
 struct state {
     int waitingForStatus;
-} ;
+};
 
 class NetSocket : public QUdpSocket
 {

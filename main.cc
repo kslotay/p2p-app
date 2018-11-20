@@ -70,10 +70,6 @@ ChatDialog::ChatDialog()
 
 void ChatDialog::readPendingMessages()
 {
-	// if we are still waiting for an ACK ignore everything else
-	if (currentState.waitingForStatus == 1) {
-		return;
-	}
 
 	while (sock->hasPendingDatagrams()) {
 		QByteArray datagram;
@@ -146,6 +142,12 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 	qDebug() << "\nDEBUG: message contains want:" << peerStatusMap;
 	qDebug() << "DEBUG: localStatusMap:" << localStatusMap;
 
+	for (auto portNumber : last_message_sent.keys()) {
+
+		peerWantMap["Want"].contains(
+				last_message_sent[peerWantMap["Want"][portNumber].value("Origin").toString()]);
+	}
+
 	// Set initial status
 	Status status = INSYNC;
 	// Compare statusMaps using localStatus keys
@@ -193,15 +195,17 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 				// start rumor
 
 				qDebug() << "COIN FLIP ABOUT TO SEND";
-				// start timer
 
-				//sendMessage(last_message_sent);
+
 			}
 			else {
 				qDebug() << "COIN FLIP ABOUT TO STOP";
 			}
 			break;
 		case AHEAD:
+
+			timer->start(1000);
+
 			sendMessage(serializeMessage(messageToSend));
 			break;
 		case BEHIND:
@@ -255,11 +259,17 @@ void ChatDialog::processIncomingData(QByteArray datagramReceived, QHostAddress s
 	qDebug() << "messageReceived: " << messageReceived;
 	qDebug() << "wantMap: " << peerWantMap;
 
-	if (messageReceived.contains("ChatText")) {
+	// if we are still waiting for an ACK ignore everything else
+
+	if (messageReceived.contains("ChatText") && currentState.waitingForStatus == 0) {
+
 		processReceivedMessage(messageReceived, sender, senderPort);
 
 	}
 	else if (peerWantMap.contains("Want")) {
+		// check if the state is waiting status
+		// check if the want matches the one we are waiting an ACK for
+
 		processStatusMessage(peerWantMap, sender, senderPort);
 	}
 	else if (pingMap.contains("Ping")) {
@@ -308,18 +318,11 @@ QByteArray ChatDialog::serializeMessage(QMap<QString, QVariant> messageToSend)
 void ChatDialog::timeoutHandler()
 {
 	qDebug() << "Time out occured";
-	QByteArray lastMessageBuffer;
-	QDataStream stream(&lastMessageBuffer,  QIODevice::ReadWrite);
 
 	for (auto portNumber : last_message_sent.keys()) {
 
-		if (last_message_sent.contains(portNumber)) {
-
-			stream << last_message_sent[portNumber];
-
-			sendMessage(lastMessageBuffer);
-		}
-
+		sendMessage(serializeMessage(last_message_sent[portNumber]));
+		currentState.waitingForStatus = 0;
 	}
 	timer->stop();
 }
@@ -348,6 +351,9 @@ void ChatDialog::gotReturnPressed()
 
 	// about to send a message from chat diaglog, start a timer
 	timer->start(1000);
+
+	// about to send message so set current waitingForStatus to true
+	currentState.waitingForStatus = 1;
 
 	sendMessage(serializeLocalMessage(text));
 
