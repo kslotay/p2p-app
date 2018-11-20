@@ -60,6 +60,26 @@ ChatDialog::ChatDialog()
 
 	// Callback fired when message is received
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
+
+	Ping();
+
+	if (neighborList.size() < 1) {
+		QList<int> peerList = sock->PeerList();
+
+		int index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+
+		peerList.removeOne(peerList[index]);
+		
+		index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+	}
+	else if (neighborList.size() < 2) {
+		QList<int> peerList = sock->PeerList();
+
+		int index = rand() % peerList.size();
+		neighborList.append(peerList[index]);
+	}
 }
 
 void ChatDialog::readPendingMessages()
@@ -183,11 +203,11 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 			if((rand() % 2) == 1) {
 				// start rumor
 
-				qDebug() << "COIN FLIP ABOUT TO SEND";
-				sendMessage(last_message_sent);
+				// qDebug() << "COIN FLIP ABOUT TO SEND";
+				// sendMessage(last_message_sent);
 			}
 			else {
-				qDebug() << "COIN FLIP ABOUT TO STOP";
+				// qDebug() << "COIN FLIP ABOUT TO STOP";
 			}
 			break;
 		case AHEAD:
@@ -210,15 +230,22 @@ void ChatDialog::processPingReply(QHostAddress sender, int senderPort) {
 
 	pingTimes[senderPort] = pingTime;
 
-	pingList.removeFirst();
+	pingList.removeOne(senderPort);
 
-	if (!pingList.empty()) {
-		pingTimer.restart();
-		sendPingMessage(sender, pingList[0]);
+	qDebug() << "pingTimes: " << pingTimes;
+
+	if (pingTimes.size() > 1) {
+		// take minimum ping as neighbor
+		// neighborList.append();
 	}
-	else {
-		qDebug() << "pingTimes: " << pingTimes;
-	}
+	
+// 	if (!pingList.empty()) {
+// 		pingTimer.restart();
+// 		sendPingMessage(sender, pingList[0]);
+// 	}
+// 	else {
+// 		qDebug() << "pingTimes: " << pingTimes;
+// 	}
 }
 
 // Process the message read from pending messages from sock
@@ -303,7 +330,7 @@ void ChatDialog::timeoutHandler()
 	// what destination orgin timed out
 	// send message from last_message_sent of that origin that timed out
 	// remove that origin from last_message_sent
-	sendme	
+	// sendme	
 	// sock->writeDatagram(, last_message_sent.size(), QHostAddress::LocalHost, senderPort);
 	
 	// timer->start(1000);
@@ -321,7 +348,7 @@ void ChatDialog::antiEntropyHandler()
 
 	sendStatusMessage(QHostAddress::LocalHost, peerList[index]);
 
-	// antiEntropyTimer->start(10000);				
+	// antiEntropyTimer->start(10000);
 }
 
 void ChatDialog::gotReturnPressed()
@@ -344,9 +371,9 @@ void ChatDialog::gotReturnPressed()
 
 void ChatDialog::sendMessage(QByteArray buffer)
 {
-	QMap<QString, QVariant> lastMessageSentMap;
-	QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
-	stream >> lastMessageSentMap;
+	// QMap<QString, QVariant> lastMessageSentMap;
+	// QDataStream stream(&datagramReceived,  QIODevice::ReadOnly);
+	// stream >> lastMessageSentMap;
 
 	QList<int> peerList = sock->PeerList();
 
@@ -359,7 +386,7 @@ void ChatDialog::sendMessage(QByteArray buffer)
 	sock->writeDatagram(buffer, buffer.size(), QHostAddress::LocalHost, peerList[index]);
 	
 	// todo find unique id for peer
-	last_message_sent[peerList[index]] = lastMessageSentMap;
+	// last_message_sent[peerList[index]] = lastMessageSentMap;
 	
 }
 
@@ -378,20 +405,35 @@ void ChatDialog::sendPingMessage(QHostAddress sendto, int port)
 	sock->writeDatagram(ping, ping.size(), sendto, port);
 }
 
-void ChatDialog::Ping(QHostAddress sendto, int port) {
-    
-	// int timeout = 10000;
-	// pintTimer.start();
+void ChatDialog::Ping() {
+	int pingTimeout = 5000;
+	int attempts = 3;
+	pingFnTimer.start();
 
-	// while (remainingTime > 0) {
-	// 	// Check if resend count limit is reached
-	// 	{
-	// 		int remainingTime = timeout - pingTimer.elapsed();
-	// 		sendPingMessage(QHostAddress::LocalHost, pingList[0]);
-	// 		// If peerlist is equal to two
-	// 	}
-	// }
+	int remainingTime = pingTimeout - pingFnTimer.elapsed();
+	while ((remainingTime > 0) && (attempts > 0)) {
+		remainingTime = pingTimeout - pingFnTimer.elapsed();
+		
+		int timeout2 = 1600;
+	
+		if(pingTimer.elapsed() > 0) {
+			pingTimer.restart();	
+		}
+		else {
+			pingTimer.start();
+		}
 
+		for (int i = 0; i < pingList.size(); i++) {
+			sendPingMessage(QHostAddress::LocalHost, pingList[i]);
+		}
+
+		int remainingTime = timeout2 - pingTimer.elapsed();
+		while (remainingTime > 0) {
+			remainingTime = timeout2 - pingTimer.elapsed();
+		}
+
+		attempts--;
+	}
 }
 
 void ChatDialog::sendPingReply(QHostAddress sendto, int port)
