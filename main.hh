@@ -35,7 +35,8 @@ public:
 	int senderPort;
 	QString local_origin;
 	QMap<QString, quint32> localStatusMap;
-	QByteArray last_message_sent;
+	// last messages sent as QMap of destinationOrigin and last messages sent
+	QMap<QString, QMap<QString, QVariant>> last_message_sent;
 	QMap<int, int> pingTimes;
 	QList<int> pingList;
 	QMap<QString, QMap<quint32, QMap<QString, QVariant>>> messageList;
@@ -43,6 +44,7 @@ public:
 	void sendStatusMessage(QHostAddress sendto, int port);
 	void sendPingMessage(QHostAddress sendto, int port);
 	void sendPingReply(QHostAddress sendto, int port);
+	void Ping(QHostAddress sendto, int port);
 	void processPingMessage(QHostAddress sender, int senderPort);
 	void processPingReply(QHostAddress sender, int senderPort);
 	void processIncomingData(QByteArray datagramReceived, QHostAddress sender, int senderPort);
@@ -53,6 +55,8 @@ public:
 	QTimer *timer;
 	QTimer *antiEntropyTimer;
 	QElapsedTimer pingTimer;
+	
+	
 
 public slots:
 	void gotReturnPressed();
