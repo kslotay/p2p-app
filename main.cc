@@ -90,7 +90,7 @@ void ChatDialog::readPendingMessages()
 	}
 }
 
-void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, int senderPort)
+void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, quint16 senderPort)
 {
 	QString msg_origin = messageReceived.value("Origin").toString();
 	quint32 msg_seqnum = messageReceived.value("SeqNo").toUInt();
@@ -134,7 +134,7 @@ void ChatDialog::processReceivedMessage(QMap<QString, QVariant> messageReceived,
 	sendStatusMessage(sender, senderPort);
 }
 
-void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peerWantMap, QHostAddress sender, int senderPort) {
+void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peerWantMap, QHostAddress sender, quint16 senderPort) {
 	
 	QMap<QString, QVariant> messageToSend;
 	// Unwrap peerWant
@@ -210,12 +210,12 @@ void ChatDialog::processStatusMessage(QMap<QString, QMap<QString, quint32>> peer
 	}
 }
 
-void ChatDialog::processPingMessage(QHostAddress sender, int senderPort) {
+void ChatDialog::processPingMessage(QHostAddress sender, quint16 senderPort) {
 	// Send ping reply
 	sendPingReply(sender, senderPort);
 }
 
-void ChatDialog::processPingReply(QHostAddress sender, int senderPort) {
+void ChatDialog::processPingReply(QHostAddress sender, quint16 senderPort) {
 	// Check timer, add to pingTimes, and remove port from pingList
 	quint16 pingTime = pingTimer.elapsed();
 
@@ -233,7 +233,7 @@ void ChatDialog::processPingReply(QHostAddress sender, int senderPort) {
 }
 
 // Process the message read from pending messages from sock
-void ChatDialog::processIncomingData(QByteArray datagramReceived, QHostAddress sender, int senderPort)
+void ChatDialog::processIncomingData(QByteArray datagramReceived, QHostAddress sender, quint16 senderPort)
 {
 	// Stream for both msg and want, as stream is emptied on read
 	QMap<QString, QVariant> messageReceived;
@@ -326,7 +326,7 @@ void ChatDialog::timeoutHandler()
 
 void ChatDialog::antiEntropyHandler() 
 {
-	QList<int> peerList = sock->PeerList();
+	QList<quint16> peerList = sock->PeerList();
 
 	qDebug() << "Peer List: " << peerList;
 
