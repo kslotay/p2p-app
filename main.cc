@@ -39,10 +39,9 @@ ChatDialog::ChatDialog()
 	if (!socket->bind())
 		exit(1);
 
+	// Randomize local origin
 	qsrand((uint) QDateTime::currentMSecsSinceEpoch());
-	QString myOrigin;
-  	myOrigin = QString::number(qrand());
-	local_origin = myOrigin;
+	local_origin = QString::number(qrand());
 	setWindowTitle(local_origin);
 
 	// // Initialize timer for message timeout
@@ -74,7 +73,7 @@ ChatDialog::ChatDialog()
 	connect(socket, SIGNAL(readyRead()), this, SLOT(readPendingMessages()));
 
 	Ping(socket);
-
+	
 }
 
 void ChatDialog::readPendingMessages()
