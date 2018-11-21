@@ -40,40 +40,27 @@ public:
 	int senderPort;
 	QString local_origin;
 	QMap<QString, quint32> localStatusMap;
-	// last messages sent as QMap of destinationOrigin and last messages sent
-<<<<<<< HEAD
-	QMap<quint32, QMap<QString, QVariant>> last_message_sent;
-=======
-	// QMap<QString, QMap<QString, QVariant>> last_message_sent;
-	QByteArray last_message_sent;
->>>>>>> seg_fault
-	QMap<int, int> pingTimes;
-	QList<int> pingList;
-	QList<int> neighborList;
+	QMap<quint16, QMap<QString, QVariant>> last_message_sent;
+	QMap<quint16, int> pingTimes;
+	QList<quint16> pingList;
+	QList<quint16> neighborList;
+	// QMap<QString, quint16> neighborList;
 	QMap<QString, QMap<quint32, QMap<QString, QVariant>>> messageList;
-	void sendMessage(QByteArray);
-<<<<<<< HEAD
+	void sendMessage(QByteArray buffer, quint16 port);
+	void sendRandomMessage(QByteArray buffer);
 	void sendStatusMessage(QHostAddress sendto, quint16 port);
 	void sendPingMessage(QHostAddress sendto, quint16 port);
 	void sendPingReply(QHostAddress sendto, quint16 port);
-	void Ping(QHostAddress sendto, quint16 port);
-	void processPingMessage(QHostAddress sender, quint16 senderPort);
-	void processPingReply(QHostAddress sender, quint16 senderPort);
-	void processIncomingData(QByteArray datagramReceived, QHostAddress sender, quint16 senderPort);
-=======
-	void sendStatusMessage(QHostAddress sendto, int port);
-	void sendPingMessage(QHostAddress sendto, int port);
-	void sendPingReply(QHostAddress sendto, int port);
 	void Ping();
-	void processPingMessage(QHostAddress sender, int senderPort);
-	void processPingReply(QHostAddress sender, int senderPort);
-	void processIncomingData(QByteArray datagramReceived, QHostAddress sender, int senderPort);
->>>>>>> seg_fault
+	void processPingMessage(QHostAddress sender, quint16 senderPort);
+	void processPingReply(quint16 senderPort);
+	void processIncomingData(QByteArray datagramReceived, QHostAddress sender, quint16 senderPort);
 	QByteArray serializeLocalMessage(QString messageText);
 	QByteArray serializeMessage(QMap<QString, QVariant> messageToSend);
 	void processReceivedMessage(QMap<QString, QVariant> messageReceived, QHostAddress sender, quint16 senderPort);
 	void processStatusMessage(QMap<QString, QMap<QString, quint32>> peerWantMap, QHostAddress sender, quint16 senderPort);
-	void cacheLastSentMessage(int peerPost, QByteArray buffer);
+	void cacheLastSentMessage(quint16 peerPost, QByteArray buffer);
+	void pickNeighboring();	
 	QTimer *timer;
 	QTimer *antiEntropyTimer;
 	QElapsedTimer pingTimer;
